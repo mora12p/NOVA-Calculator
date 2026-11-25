@@ -1,317 +1,90 @@
-
 import streamlit as st
-import html
-from calculator import NovaCalculator
+from calculator import calculate_expression
 
-# ================= CONFIG =================
+st.set_page_config(page_title="Scientific Calculator", layout="wide")
 
-st.set_page_config(
-    page_title="NOVA | Scientific Calculator",
-    page_icon="🪐",
-    layout="wide"
-)
-
-calc = NovaCalculator()
-
-# ================= SESSION STATE =================
-
-defaults = {
-    "expression": "",
-    "result": "",
-    "history": [],
-    "angle_mode": "DEG"
-}
-
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-# ================= CSS =================
-
+if "expression" not in st.session_state:
+    st.session_state.expression = ""
+if "result" not in st.session_state:
+    st.session_state.result = ""
+if "history" not in st.session_state:
+    st.session_state.history = []
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-:root {
-    --bg: #080607;
-    --surface: #140d10;
-    --primary: #ff3b20;
-    --secondary: #ff8a00;
-    --text: #fff4f1;
-    --muted: #a99ba0;
-}
-
-.stApp {
-    background:
-        radial-gradient(ellipse at 5% 30%, rgba(255,45,15,.13), transparent 40%),
-        radial-gradient(ellipse at 90% 85%, rgba(255,100,0,.10), transparent 35%),
-        #080607;
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-}
-
-header[data-testid="stHeader"] {
-    background: transparent;
-}
-
-.block-container {
-    max-width: 1450px;
-    padding-top: 2.5rem;
-}
-
-.nova-logo {
-    font-size: 48px;
-    font-weight: 900;
-    letter-spacing: 8px;
-    background: linear-gradient(90deg, #ff321c, #ff9a00);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.nova-subtitle {
-    color: #a99ba0;
-    font-size: 11px;
-    letter-spacing: 5px;
-    margin-bottom: 35px;
-}
-
-.display {
-    background: linear-gradient(145deg, #211116, #0e090c);
-    border: 1px solid rgba(255,75,35,.55);
-    border-radius: 22px;
-    padding: 30px;
-    min-height: 155px;
-    margin: 15px 0 25px;
-    box-shadow: 0 0 30px rgba(255,45,15,.12);
-}
-
-.display-label {
-    color: #a99ba0;
-    font-size: 11px;
-    letter-spacing: 3px;
-}
-
-.display-expression {
-    color: #d8c6cc;
-    font-size: 25px;
-    text-align: right;
-    overflow-wrap: anywhere;
-    margin-top: 15px;
-}
-
-.display-result {
-    color: #ff8a00;
-    font-size: 42px;
-    font-weight: 800;
-    text-align: right;
-    text-shadow: 0 0 20px rgba(255,100,0,.5);
-    overflow-wrap: anywhere;
-}
-
 .stButton button {
-    background: linear-gradient(145deg, #211419, #120c10);
-    color: white;
-    border: 1px solid rgba(255,75,35,.3);
-    border-radius: 15px;
-    min-height: 62px;
-    font-size: 19px;
-    font-weight: 600;
-    transition: all .2s ease;
+    height: 55px;
+    font-size: 18px;
 }
-
-.stButton button:hover {
-    background: linear-gradient(135deg, #ff421e, #ff8500);
-    color: white;
-    border-color: #ff9a50;
-    box-shadow: 0 0 22px rgba(255,65,20,.35);
-    transform: translateY(-2px);
+.calc-screen {
+    background-color: #1e1e1e;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: right;
+    margin-bottom: 15px;
+    border: 1px solid #333;
 }
-
-.stButton button:active {
-    transform: scale(.97);
+.expr-text {
+    color: #aaaaaa;
+    font-size: 20px;
+    min-height: 28px;
 }
-
-div[data-testid="stTextInput"] input {
-    background: #170e12;
-    color: white;
-    border: 1px solid rgba(255,75,35,.3);
-    border-radius: 13px;
+.res-text {
+    color: #ffffff;
+    font-size: 34px;
+    font-weight: bold;
+    min-height: 45px;
 }
-
-div[data-testid="stSegmentedControl"] {
-    background: #170e12;
-    border-radius: 12px;
-}
-
-.history-heading {
-    font-size: 24px;
-    font-weight: 800;
-    margin-bottom: 5px;
-}
-
-.history-heading span {
-    color: #ff8a00;
-    margin-right: 8px;
-}
-
-.history-item {
-    background: linear-gradient(145deg, #211419, #130d10);
-    border: 1px solid rgba(255,75,35,.2);
-    border-radius: 15px;
-    padding: 15px;
-    margin: 12px 0;
-    overflow-wrap: anywhere;
-}
-
-.history-expression {
-    color: #d8c6cc;
-    font-size: 14px;
-}
-
-.history-result {
-    color: #ff8a00;
-    font-size: 19px;
-    font-weight: 700;
-    margin-top: 8px;
-}
-
-.nova-footer {
-    color: #78676d;
-    text-align: center;
-    font-size: 11px;
-    letter-spacing: 2px;
-    padding: 30px;
-}
-
-hr {
-    border-color: rgba(255,75,35,.2);
-}
-
 </style>
 """, unsafe_allow_html=True)
 
-# ================= FUNCTIONS =================
+def press(val):
+    st.session_state.expression += str(val)
 
-def add_value(value):
-    st.session_state.expression += value
-    st.session_state.result = ""
-
-def clear_all():
+def clear():
     st.session_state.expression = ""
     st.session_state.result = ""
 
-def delete_last():
+def backspace():
     st.session_state.expression = st.session_state.expression[:-1]
-    st.session_state.result = ""
 
-def calculate():
-    expression = st.session_state.expression
-
-    if not expression.strip():
+def solve():
+    expr = st.session_state.expression
+    if not expr:
         return
+    res = calculate_expression(expr, angle_mode)
+    st.session_state.result = res
+    if res != "Error":
+        st.session_state.history.append((expr, res))
+        st.session_state.expression = res
 
-    try:
-        result = calc.calculate(
-            expression,
-            st.session_state.angle_mode
-        )
+st.title("Scientific Calculator")
 
-        result_text = str(result)
+main_col, side_col = st.columns([3, 1.2])
 
-        st.session_state.result = result_text
+with main_col:
+    angle_mode = st.radio("Angle Unit:", ["DEG", "RAD"], horizontal=True)
 
-        st.session_state.history.append({
-            "expression": expression,
-            "result": result_text
-        })
-
-        st.session_state.expression = result_text
-
-    except (ValueError, TypeError, ArithmeticError):
-        st.session_state.result = "Error"
-
-def reuse_expression(expression):
-    st.session_state.expression = expression
-    st.session_state.result = ""
-
-# ================= HEADER =================
-
-st.markdown("""
-<div class="nova-logo">NOVA</div>
-<div class="nova-subtitle">
-SCIENTIFIC CALCULATOR
-</div>
-""", unsafe_allow_html=True)
-
-# ================= LAYOUT =================
-
-calculator_col, history_col = st.columns(
-    [3, 1.15],
-    gap="large"
-)
-
-# ================= CALCULATOR =================
-
-with calculator_col:
-
-    top_left, top_right = st.columns([2, 1])
-
-    with top_left:
-        st.markdown("### Calculator")
-
-    with top_right:
-        st.segmented_control(
-            "Angle Mode",
-            options=["DEG", "RAD"],
-            key="angle_mode",
-            label_visibility="collapsed"
-        )
-
-    expression_display = html.escape(
-        st.session_state.expression or "0"
-    )
-
-    result_display = html.escape(
-        st.session_state.result
-    )
-
+    current_expr = st.session_state.expression if st.session_state.expression else "0"
     st.markdown(f"""
-    <div class="display">
-        <div class="display-label">NOVA DISPLAY</div>
-        <div class="display-expression">
-            {expression_display}
-        </div>
-        <div class="display-result">
-            {result_display}
-        </div>
+    <div class="calc-screen">
+        <div class="expr-text">{current_expr}</div>
+        <div class="res-text">{st.session_state.result}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # SCIENTIFIC BUTTONS
-
-    scientific_buttons = [
+    sci_rows = [
         ["sin(", "cos(", "tan(", "sqrt(", "log("],
         ["ln(", "exp(", "abs(", "pi", "e"]
     ]
 
-    for row_index, row in enumerate(scientific_buttons):
+    for r_idx, row in enumerate(sci_rows):
         cols = st.columns(5)
+        for idx, label in enumerate(row):
+            cols[idx].button(label, key=f"sci_{r_idx}_{idx}", use_container_width=True, on_click=press, args=(label,))
 
-        for col, value in zip(cols, row):
-            with col:
-                st.button(
-                    value,
-                    key=f"sci_{row_index}_{value}",
-                    use_container_width=True,
-                    on_click=add_value,
-                    args=(value,)
-                )
+    st.write("---")
 
-    st.divider()
-
-    # MAIN KEYPAD
-
-    buttons = [
+    num_rows = [
         ["AC", "DEL", "(", ")", "÷"],
         ["7", "8", "9", "^", "×"],
         ["4", "5", "6", "%", "-"],
@@ -319,105 +92,32 @@ with calculator_col:
         ["0", "00", "pi", "e", "="]
     ]
 
-    for row_index, row in enumerate(buttons):
-
+    for r_idx, row in enumerate(num_rows):
         cols = st.columns(5)
+        for idx, label in enumerate(row):
+            btn_key = f"num_{r_idx}_{idx}"
+            if label == "AC":
+                cols[idx].button(label, key=btn_key, use_container_width=True, on_click=clear)
+            elif label == "DEL":
+                cols[idx].button(label, key=btn_key, use_container_width=True, on_click=backspace)
+            elif label == "=":
+                cols[idx].button(label, key=btn_key, use_container_width=True, type="primary", on_click=solve)
+            else:
+                val = "/" if label == "÷" else ("*" if label == "×" else label)
+                cols[idx].button(label, key=btn_key, use_container_width=True, on_click=press, args=(val,))
 
-        for col, value in zip(cols, row):
-
-            with col:
-
-                if value == "AC":
-                    st.button(
-                        value,
-                        key=f"key_{row_index}_{value}",
-                        use_container_width=True,
-                        on_click=clear_all
-                    )
-
-                elif value == "DEL":
-                    st.button(
-                        value,
-                        key=f"key_{row_index}_{value}",
-                        use_container_width=True,
-                        on_click=delete_last
-                    )
-
-                elif value == "=":
-                    st.button(
-                        value,
-                        key=f"key_{row_index}_{value}",
-                        use_container_width=True,
-                        on_click=calculate,
-                        type="primary"
-                    )
-
-                else:
-                    actual_value = {
-                        "÷": "/",
-                        "×": "*"
-                    }.get(value, value)
-
-                    st.button(
-                        value,
-                        key=f"key_{row_index}_{value}",
-                        use_container_width=True,
-                        on_click=add_value,
-                        args=(actual_value,)
-                    )
-
-# ================= HISTORY =================
-
-with history_col:
-
-    st.markdown("""
-    <div class="history-heading">
-        <span>◷</span> History
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.caption("Your recent calculations")
-
+with side_col:
+    st.subheader("History")
     if st.button("Clear History", use_container_width=True):
         st.session_state.history = []
         st.rerun()
 
-    if not st.session_state.history:
-        st.info("No calculations yet.")
-
+    if len(st.session_state.history) == 0:
+        st.write("No calculations yet.")
     else:
-        for index, item in enumerate(
-            reversed(st.session_state.history)
-        ):
-
-            safe_expression = html.escape(item["expression"])
-            safe_result = html.escape(item["result"])
-
-            st.markdown(f"""
-            <div class="history-item">
-                <div class="history-expression">
-                    {safe_expression}
-                </div>
-                <div class="history-result">
-                    = {safe_result}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.button(
-                "Reuse calculation",
-                key=f"reuse_{index}",
-                use_container_width=True,
-                on_click=reuse_expression,
-                args=(item["expression"],)
-            )
-
-# ================= FOOTER =================
-
-st.markdown("""
-<div class="nova-footer">
-    NOVA SCIENTIFIC CALCULATOR · VERSION 1.0
-    <br>
-    BUILT WITH PYTHON
-</div>
-""", unsafe_allow_html=True)
+        for i, (old_expr, old_res) in enumerate(reversed(st.session_state.history)):
+            st.info(f"{old_expr} = **{old_res}**")
+            if st.button("Load", key=f"load_{i}"):
+                st.session_state.expression = old_expr
+                st.session_state.result = ""
+                st.rerun()
